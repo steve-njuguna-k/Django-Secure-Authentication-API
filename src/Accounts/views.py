@@ -35,9 +35,40 @@ def LoginAPI(request):
         'iat':datetime.datetime.utcnow()
     }
 
-    token = jwt.encode(payload, 'secret', algorithm='HS256')
+    token = jwt.encode(payload, key='secret', algorithm='HS256')
 
-    return Response({
-        "message":"Login Successful!",
-        "token":token
-    })
+    response = Response()
+    
+    response.set_cookie(key='jwt', value=token, httponly=True)
+    response.data = {
+        'jwt': token
+        }
+    return response
+
+@api_view(['GET'])
+def UserAPI(request):
+    token = request.COOKIES.get('jwt')
+
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+
+    try:
+        payload = jwt.decode(token, key='secret', algorithms=['HS256'])
+
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('Unauthenticated!')
+
+    user = User.objects.filter(id=payload['id']).first()
+    serializer = RegisterSerializer(user)
+
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def LogoutAPI(request):
+    response = Response()
+    response.delete_cookie('jwt')
+    response.data = {
+        "message":"Successfully Logged Out!"
+    }
+
+    return response
