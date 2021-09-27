@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.models import User
 from rest_framework.exceptions import AuthenticationFailed
+import jwt, datetime
 
 # Create your views here.
 @api_view(['POST'])
@@ -28,6 +29,15 @@ def LoginAPI(request):
     if not user.check_password(password):
         raise AuthenticationFailed('Incorrect Password!')
 
+    payload = {
+        'id':user.id,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15),
+        'iat':datetime.datetime.utcnow()
+    }
+
+    token = jwt.encode(payload, 'secret', algorithm='HS256')
+
     return Response({
-        "message":"Login Successful!"
+        "message":"Login Successful!",
+        "token":token
     })
